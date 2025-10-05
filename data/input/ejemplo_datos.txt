@@ -1,0 +1,44 @@
+
+                ESTADO FINANCIERO DE PRUEBA
+                ===========================
+                
+                Empresa: Empresa Ejemplo S.A.
+                Sector: Manufacturero
+                Periodo: 2023
+                
+                ACTIVOS:
+                Activo Corriente: $1,500,000
+                Efectivo: $300,000
+                Cuentas por Cobrar: $800,000
+                Inventarios: $400,000
+                
+                Activo No Corriente: $2,500,000
+                Propiedad, Planta y Equipo: $2,500,000
+                
+                TOTAL ACTIVOS: $4,000,000
+                
+                PASIVOS:
+                Pasivo Corriente: $800,000
+                Cuentas por Pagar: $500,000
+                Préstamos Corto Plazo: $300,000
+                
+                Pasivo No Corriente: $1,200,000
+                Préstamos Largo Plazo: $1,200,000
+                
+                TOTAL PASIVOS: $2,000,000
+                
+                PATRIMONIO:
+                Capital: $1,500,000
+                Utilidades Retenidas: $500,000
+                
+                TOTAL PATRIMONIO: $2,000,000
+                
+                ESTADO DE RESULTADOS:
+                Ingresos: $5,000,000
+                Costo de Ventas: $3,000,000
+                Utilidad Bruta: $2,000,000
+                Gastos Operacionales: $1,500,000
+                Utilidad Operacional: $500,000
+                Gastos Financieros: $100,000
+                Utilidad Neta: $400,000
+                
