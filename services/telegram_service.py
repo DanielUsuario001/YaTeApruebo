@@ -7,6 +7,8 @@ import asyncio
 from typing import Dict, Optional, List, Union
 from pathlib import Path
 import aiofiles
+import tempfile
+import os
 
 from telegram import Update, Bot
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
@@ -374,36 +376,51 @@ Usa /cancelar para reiniciar el proceso.
                 "📄 Archivo recibido. Procesando...\n\n⏳ Esto puede tomar unos momentos."
             )
             
-            # Descargar archivo
+            # Descargar archivo usando directorio temporal del sistema
             file = await context.bot.get_file(update.message.document.file_id)
-            archivo_temp = f"/tmp/{user_id}_{update.message.document.file_name}"
+            
+            # Crear archivo temporal con extensión .pdf
+            temp_dir = tempfile.gettempdir()
+            archivo_temp = os.path.join(temp_dir, f"{user_id}_{update.message.document.file_name}")
+            
+            logger.info(f"📥 Descargando PDF a: {archivo_temp}")
             await file.download_to_drive(archivo_temp)
             
             # Procesar con la Secretaria Virtual
             session_id = session["session_id"]
             
-            resultado_archivo = await self.secretaria.procesar_archivo_pdf(session_id, archivo_temp)
-            
-            if "error" in resultado_archivo:
-                await update.message.reply_text(f"❌ Error procesando archivo: {resultado_archivo['error']}")
-                self.user_sessions[user_id]["estado"] = "esperando_archivo_pdf"
-                return
-            
-            # Preparar datos para análisis
-            self.user_sessions[user_id]["estado"] = "preparando_analisis"
-            
-            await update.message.reply_text(
-                "✅ Archivo procesado correctamente.\n\n📊 Preparando análisis..."
-            )
-            
-            resultado_preparacion = await self.secretaria.preparar_datos_para_analisis(session_id)
-            
-            if "error" in resultado_preparacion:
-                await update.message.reply_text(f"❌ Error preparando análisis: {resultado_preparacion['error']}")
-                return
-            
-            # Iniciar análisis con el Analista de Riesgos
-            await self._realizar_analisis_completo(update, user_id, session_id)
+            try:
+                resultado_archivo = await self.secretaria.procesar_archivo_pdf(session_id, archivo_temp)
+                
+                if "error" in resultado_archivo:
+                    await update.message.reply_text(f"❌ Error procesando archivo: {resultado_archivo['error']}")
+                    self.user_sessions[user_id]["estado"] = "esperando_archivo_pdf"
+                    return
+                
+                # Preparar datos para análisis
+                self.user_sessions[user_id]["estado"] = "preparando_analisis"
+                
+                await update.message.reply_text(
+                    "✅ Archivo procesado correctamente.\n\n📊 Preparando análisis..."
+                )
+                
+                resultado_preparacion = await self.secretaria.preparar_datos_para_analisis(session_id)
+                
+                if "error" in resultado_preparacion:
+                    await update.message.reply_text(f"❌ Error preparando análisis: {resultado_preparacion['error']}")
+                    return
+                
+                # Iniciar análisis con el Analista de Riesgos
+                await self._realizar_analisis_completo(update, user_id, session_id)
+                
+            finally:
+                # Limpiar archivo temporal
+                try:
+                    if os.path.exists(archivo_temp):
+                        os.remove(archivo_temp)
+                        logger.info(f"🗑️ Archivo temporal eliminado: {archivo_temp}")
+                except Exception as e:
+                    logger.warning(f"⚠️ No se pudo eliminar archivo temporal: {e}")
             
         except Exception as e:
             logger.error(f"❌ Error procesando PDF: {str(e)}")
