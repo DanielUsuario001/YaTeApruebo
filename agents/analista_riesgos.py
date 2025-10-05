@@ -142,21 +142,82 @@ class AnalistaRiesgos:
         - Riesgo de liquidez (BAJO, MEDIO, ALTO)
         - Observaciones específicas
         
-        Responde en formato JSON.
+        Responde en formato JSON con esta estructura:
+        {{
+            "ratios": {{}},
+            "interpretacion": "",
+            "riesgo_liquidez": "BAJO|MEDIO|ALTO",
+            "observaciones": []
+        }}
         """
         
         try:
-            response = await self.openai_service.generar_respuesta(prompt)
+            logger.info("🔄 Solicitando análisis de liquidez a OpenAI...")
+            response = await self.openai_service.generar_respuesta_json(prompt)
+            
+            logger.debug(f"📥 Respuesta de OpenAI recibida: {response[:200]}...")
+            
+            # Verificar que la respuesta no esté vacía
+            if not response or response.strip() == "":
+                logger.error("❌ Respuesta vacía de OpenAI")
+                return {
+                    "categoria": "liquidez",
+                    "resultado": {
+                        "ratios": {},
+                        "interpretacion": "No se pudo realizar el análisis por falta de respuesta del modelo",
+                        "riesgo_liquidez": "MEDIO",
+                        "observaciones": ["Error en análisis automático"]
+                    },
+                    "timestamp": datetime.now().isoformat()
+                }
+            
             analisis = json.loads(response)
             
+            # Verificar si hay error en la respuesta
+            if "error" in analisis:
+                logger.error(f"Error en respuesta de análisis de liquidez: {analisis['error']}")
+                return {
+                    "categoria": "liquidez",
+                    "resultado": {
+                        "ratios": {},
+                        "interpretacion": f"Error en análisis: {analisis.get('error', 'Desconocido')}",
+                        "riesgo_liquidez": "MEDIO",
+                        "observaciones": ["Error en procesamiento"]
+                    },
+                    "timestamp": datetime.now().isoformat()
+                }
+            
+            logger.success("✅ Análisis de liquidez completado")
             return {
                 "categoria": "liquidez",
                 "resultado": analisis,
                 "timestamp": datetime.now().isoformat()
             }
+        except json.JSONDecodeError as e:
+            logger.error(f"Error decodificando JSON en análisis de liquidez: {str(e)}")
+            logger.debug(f"Respuesta que causó error: {response if 'response' in locals() else 'N/A'}")
+            return {
+                "categoria": "liquidez",
+                "resultado": {
+                    "ratios": {},
+                    "interpretacion": "Error en formato de respuesta del modelo de IA",
+                    "riesgo_liquidez": "MEDIO",
+                    "observaciones": ["Respuesta inválida del modelo"]
+                },
+                "timestamp": datetime.now().isoformat()
+            }
         except Exception as e:
             logger.error(f"Error en análisis de liquidez: {str(e)}")
-            return {"error": str(e)}
+            return {
+                "categoria": "liquidez",
+                "resultado": {
+                    "ratios": {},
+                    "interpretacion": f"Error inesperado: {str(e)}",
+                    "riesgo_liquidez": "MEDIO",
+                    "observaciones": ["Error en procesamiento"]
+                },
+                "timestamp": datetime.now().isoformat()
+            }
     
     async def _analizar_solvencia(self, datos: Dict) -> Dict:
         """Analiza los indicadores de solvencia."""
@@ -175,21 +236,78 @@ class AnalistaRiesgos:
         5. Capacidad de pago a largo plazo
         
         Evalúa el riesgo de insolvencia y proporciona análisis detallado.
-        Responde en formato JSON.
+        
+        Responde en formato JSON con esta estructura:
+        {{
+            "ratios": {{}},
+            "evaluacion": "",
+            "riesgo_insolvencia": "BAJO|MEDIO|ALTO",
+            "recomendaciones": []
+        }}
         """
         
         try:
-            response = await self.openai_service.generar_respuesta(prompt)
+            logger.info("🔄 Solicitando análisis de solvencia a OpenAI...")
+            response = await self.openai_service.generar_respuesta_json(prompt)
+            
+            logger.debug(f"📥 Respuesta de OpenAI recibida: {response[:200]}...")
+            
+            # Verificar que la respuesta no esté vacía
+            if not response or response.strip() == "":
+                logger.error("❌ Respuesta vacía de OpenAI")
+                return {
+                    "categoria": "solvencia",
+                    "resultado": {
+                        "ratios": {},
+                        "evaluacion": "No se pudo realizar el análisis por falta de respuesta del modelo",
+                        "riesgo_insolvencia": "MEDIO",
+                        "recomendaciones": ["Error en análisis automático"]
+                    },
+                    "timestamp": datetime.now().isoformat()
+                }
+            
             analisis = json.loads(response)
             
+            # Verificar si hay error en la respuesta
+            if "error" in analisis:
+                logger.error(f"Error en respuesta de análisis de solvencia: {analisis['error']}")
+                return {
+                    "categoria": "solvencia",
+                    "resultado": {
+                        "ratios": {},
+                        "evaluacion": f"Error en análisis: {analisis.get('error', 'Desconocido')}",
+                        "riesgo_insolvencia": "MEDIO",
+                        "recomendaciones": ["Error en procesamiento"]
+                    },
+                    "timestamp": datetime.now().isoformat()
+                }
+            
+            logger.success("✅ Análisis de solvencia completado")
             return {
                 "categoria": "solvencia",
                 "resultado": analisis,
                 "timestamp": datetime.now().isoformat()
             }
+        except json.JSONDecodeError as e:
+            logger.error(f"Error decodificando JSON en análisis de solvencia: {str(e)}")
+            logger.debug(f"Respuesta que causó error: {response if 'response' in locals() else 'N/A'}")
+            return {
+                "categoria": "solvencia",
+                "resultado": {
+                    "ratios": {},
+                    "evaluacion": "Error en formato de respuesta del modelo de IA",
+                    "riesgo_insolvencia": "MEDIO",
+                    "recomendaciones": ["Respuesta inválida del modelo"]
+                },
+                "timestamp": datetime.now().isoformat()
+            }
         except Exception as e:
             logger.error(f"Error en análisis de solvencia: {str(e)}")
-            return {"error": str(e)}
+            return {
+                "categoria": "solvencia",
+                "resultado": {"error": str(e)},
+                "timestamp": datetime.now().isoformat()
+            }
     
     async def _analizar_rentabilidad(self, datos: Dict) -> Dict:
         """Analiza los indicadores de rentabilidad."""
@@ -213,17 +331,72 @@ class AnalistaRiesgos:
         """
         
         try:
-            response = await self.openai_service.generar_respuesta(prompt)
+            logger.info("🔄 Solicitando análisis de rentabilidad a OpenAI...")
+            response = await self.openai_service.generar_respuesta_json(prompt)
+            
+            logger.debug(f"📥 Respuesta de OpenAI recibida: {response[:200]}...")
+            
+            # Verificar que la respuesta no esté vacía
+            if not response or response.strip() == "":
+                logger.error("❌ Respuesta vacía de OpenAI")
+                return {
+                    "categoria": "rentabilidad",
+                    "resultado": {
+                        "indicadores": {},
+                        "analisis": "No se pudo realizar el análisis por falta de respuesta del modelo",
+                        "nivel_rentabilidad": "MEDIO",
+                        "observaciones": ["Error en análisis automático"]
+                    },
+                    "timestamp": datetime.now().isoformat()
+                }
+            
             analisis = json.loads(response)
             
+            # Verificar si hay error en la respuesta
+            if "error" in analisis:
+                logger.error(f"Error en respuesta de análisis de rentabilidad: {analisis['error']}")
+                return {
+                    "categoria": "rentabilidad",
+                    "resultado": {
+                        "indicadores": {},
+                        "analisis": f"Error en análisis: {analisis.get('error', 'Desconocido')}",
+                        "nivel_rentabilidad": "MEDIO",
+                        "observaciones": ["Error en procesamiento"]
+                    },
+                    "timestamp": datetime.now().isoformat()
+                }
+            
+            logger.success("✅ Análisis de rentabilidad completado")
             return {
                 "categoria": "rentabilidad",
                 "resultado": analisis,
                 "timestamp": datetime.now().isoformat()
             }
+        except json.JSONDecodeError as e:
+            logger.error(f"Error decodificando JSON en análisis de rentabilidad: {str(e)}")
+            logger.debug(f"Respuesta que causó error: {response if 'response' in locals() else 'N/A'}")
+            return {
+                "categoria": "rentabilidad",
+                "resultado": {
+                    "indicadores": {},
+                    "analisis": "Error en formato de respuesta del modelo de IA",
+                    "nivel_rentabilidad": "MEDIO",
+                    "observaciones": ["Respuesta inválida del modelo"]
+                },
+                "timestamp": datetime.now().isoformat()
+            }
         except Exception as e:
             logger.error(f"Error en análisis de rentabilidad: {str(e)}")
-            return {"error": str(e)}
+            return {
+                "categoria": "rentabilidad",
+                "resultado": {
+                    "indicadores": {},
+                    "analisis": f"Error técnico: {str(e)}",
+                    "nivel_rentabilidad": "MEDIO",
+                    "observaciones": ["Error en procesamiento"]
+                },
+                "timestamp": datetime.now().isoformat()
+            }
     
     async def _analizar_eficiencia(self, datos: Dict) -> Dict:
         """Analiza los indicadores de eficiencia operativa."""
@@ -247,17 +420,72 @@ class AnalistaRiesgos:
         """
         
         try:
-            response = await self.openai_service.generar_respuesta(prompt)
+            logger.info("🔄 Solicitando análisis de eficiencia a OpenAI...")
+            response = await self.openai_service.generar_respuesta_json(prompt)
+            
+            logger.debug(f"📥 Respuesta de OpenAI recibida: {response[:200]}...")
+            
+            # Verificar que la respuesta no esté vacía
+            if not response or response.strip() == "":
+                logger.error("❌ Respuesta vacía de OpenAI")
+                return {
+                    "categoria": "eficiencia",
+                    "resultado": {
+                        "indicadores": {},
+                        "evaluacion": "No se pudo realizar el análisis por falta de respuesta del modelo",
+                        "nivel_eficiencia": "MEDIO",
+                        "recomendaciones": ["Error en análisis automático"]
+                    },
+                    "timestamp": datetime.now().isoformat()
+                }
+            
             analisis = json.loads(response)
             
+            # Verificar si hay error en la respuesta
+            if "error" in analisis:
+                logger.error(f"Error en respuesta de análisis de eficiencia: {analisis['error']}")
+                return {
+                    "categoria": "eficiencia",
+                    "resultado": {
+                        "indicadores": {},
+                        "evaluacion": f"Error en análisis: {analisis.get('error', 'Desconocido')}",
+                        "nivel_eficiencia": "MEDIO",
+                        "recomendaciones": ["Error en procesamiento"]
+                    },
+                    "timestamp": datetime.now().isoformat()
+                }
+            
+            logger.success("✅ Análisis de eficiencia completado")
             return {
                 "categoria": "eficiencia",
                 "resultado": analisis,
                 "timestamp": datetime.now().isoformat()
             }
+        except json.JSONDecodeError as e:
+            logger.error(f"Error decodificando JSON en análisis de eficiencia: {str(e)}")
+            logger.debug(f"Respuesta que causó error: {response if 'response' in locals() else 'N/A'}")
+            return {
+                "categoria": "eficiencia",
+                "resultado": {
+                    "indicadores": {},
+                    "evaluacion": "Error en formato de respuesta del modelo de IA",
+                    "nivel_eficiencia": "MEDIO",
+                    "recomendaciones": ["Respuesta inválida del modelo"]
+                },
+                "timestamp": datetime.now().isoformat()
+            }
         except Exception as e:
             logger.error(f"Error en análisis de eficiencia: {str(e)}")
-            return {"error": str(e)}
+            return {
+                "categoria": "eficiencia",
+                "resultado": {
+                    "indicadores": {},
+                    "evaluacion": f"Error técnico: {str(e)}",
+                    "nivel_eficiencia": "MEDIO",
+                    "recomendaciones": ["Error en procesamiento"]
+                },
+                "timestamp": datetime.now().isoformat()
+            }
     
     async def _analizar_riesgo_sectorial(self, datos: Dict) -> Dict:
         """Analiza riesgos específicos del sector."""
@@ -279,17 +507,72 @@ class AnalistaRiesgos:
         """
         
         try:
-            response = await self.openai_service.generar_respuesta(prompt)
+            logger.info("🔄 Solicitando análisis de riesgo sectorial a OpenAI...")
+            response = await self.openai_service.generar_respuesta_json(prompt)
+            
+            logger.debug(f"📥 Respuesta de OpenAI recibida: {response[:200]}...")
+            
+            # Verificar que la respuesta no esté vacía
+            if not response or response.strip() == "":
+                logger.error("❌ Respuesta vacía de OpenAI")
+                return {
+                    "categoria": "sectorial",
+                    "resultado": {
+                        "riesgos_identificados": [],
+                        "evaluacion": "No se pudo realizar el análisis por falta de respuesta del modelo",
+                        "nivel_riesgo": "MEDIO",
+                        "mitigaciones": ["Error en análisis automático"]
+                    },
+                    "timestamp": datetime.now().isoformat()
+                }
+            
             analisis = json.loads(response)
             
+            # Verificar si hay error en la respuesta
+            if "error" in analisis:
+                logger.error(f"Error en respuesta de análisis sectorial: {analisis['error']}")
+                return {
+                    "categoria": "sectorial",
+                    "resultado": {
+                        "riesgos_identificados": [],
+                        "evaluacion": f"Error en análisis: {analisis.get('error', 'Desconocido')}",
+                        "nivel_riesgo": "MEDIO",
+                        "mitigaciones": ["Error en procesamiento"]
+                    },
+                    "timestamp": datetime.now().isoformat()
+                }
+            
+            logger.success("✅ Análisis sectorial completado")
             return {
                 "categoria": "sectorial",
                 "resultado": analisis,
                 "timestamp": datetime.now().isoformat()
             }
+        except json.JSONDecodeError as e:
+            logger.error(f"Error decodificando JSON en análisis sectorial: {str(e)}")
+            logger.debug(f"Respuesta que causó error: {response if 'response' in locals() else 'N/A'}")
+            return {
+                "categoria": "sectorial",
+                "resultado": {
+                    "riesgos_identificados": [],
+                    "evaluacion": "Error en formato de respuesta del modelo de IA",
+                    "nivel_riesgo": "MEDIO",
+                    "mitigaciones": ["Respuesta inválida del modelo"]
+                },
+                "timestamp": datetime.now().isoformat()
+            }
         except Exception as e:
             logger.error(f"Error en análisis sectorial: {str(e)}")
-            return {"error": str(e)}
+            return {
+                "categoria": "sectorial",
+                "resultado": {
+                    "riesgos_identificados": [],
+                    "evaluacion": f"Error técnico: {str(e)}",
+                    "nivel_riesgo": "MEDIO",
+                    "mitigaciones": ["Error en procesamiento"]
+                },
+                "timestamp": datetime.now().isoformat()
+            }
     
     async def _generar_calificacion_riesgo(self, analisis_resultados: Dict) -> Dict:
         """Genera la calificación de riesgo global."""
@@ -317,10 +600,44 @@ class AnalistaRiesgos:
         """
         
         try:
-            response = await self.openai_service.generar_respuesta(prompt)
+            logger.info("🔄 Solicitando calificación de riesgo global a OpenAI...")
+            response = await self.openai_service.generar_respuesta_json(prompt)
+            
+            logger.debug(f"📥 Respuesta de OpenAI recibida: {response[:200]}...")
+            
+            # Verificar que la respuesta no esté vacía
+            if not response or response.strip() == "":
+                logger.error("❌ Respuesta vacía de OpenAI")
+                return {
+                    "nivel": settings.DEFAULT_RISK_LEVEL,
+                    "puntuacion": 50,
+                    "factores": ["Error: No se pudo generar calificación"],
+                    "justificacion": "No se pudo completar la evaluación por falta de respuesta del modelo"
+                }
+            
             calificacion = json.loads(response)
             
+            # Verificar si hay error en la respuesta
+            if "error" in calificacion:
+                logger.error(f"Error en respuesta de calificación: {calificacion['error']}")
+                return {
+                    "nivel": settings.DEFAULT_RISK_LEVEL,
+                    "puntuacion": 50,
+                    "factores": ["Error en procesamiento"],
+                    "justificacion": f"Error en análisis: {calificacion.get('error', 'Desconocido')}"
+                }
+            
+            logger.success("✅ Calificación de riesgo completada")
             return calificacion
+        except json.JSONDecodeError as e:
+            logger.error(f"Error decodificando JSON en calificación: {str(e)}")
+            logger.debug(f"Respuesta que causó error: {response if 'response' in locals() else 'N/A'}")
+            return {
+                "nivel": settings.DEFAULT_RISK_LEVEL,
+                "puntuacion": 50,
+                "factores": ["Error de formato"],
+                "justificacion": "Error en formato de respuesta del modelo"
+            }
         except Exception as e:
             logger.error(f"Error generando calificación: {str(e)}")
             return {
@@ -347,12 +664,49 @@ class AnalistaRiesgos:
         """
         
         try:
-            response = await self.openai_service.generar_respuesta(prompt)
+            logger.info("🔄 Solicitando generación de recomendaciones a OpenAI...")
+            response = await self.openai_service.generar_respuesta_json(prompt)
+            
+            logger.debug(f"📥 Respuesta de OpenAI recibida: {response[:200]}...")
+            
+            # Verificar que la respuesta no esté vacía
+            if not response or response.strip() == "":
+                logger.error("❌ Respuesta vacía de OpenAI")
+                return [
+                    "Revisar estados financieros detalladamente",
+                    "Monitorear indicadores clave de liquidez",
+                    "Evaluar estructura de capital",
+                    "Verificar flujos de efectivo",
+                    "Analizar rentabilidad operativa"
+                ]
+            
             recomendaciones = json.loads(response)
-            return recomendaciones
+            
+            # Verificar si hay error en la respuesta
+            if isinstance(recomendaciones, dict) and "error" in recomendaciones:
+                logger.error(f"Error en respuesta de recomendaciones: {recomendaciones['error']}")
+                return [
+                    "Revisar estados financieros detalladamente",
+                    "Monitorear indicadores clave",
+                    "Consultar con analista especializado"
+                ]
+            
+            logger.success("✅ Recomendaciones generadas")
+            return recomendaciones if isinstance(recomendaciones, list) else [str(recomendaciones)]
+        except json.JSONDecodeError as e:
+            logger.error(f"Error decodificando JSON en recomendaciones: {str(e)}")
+            logger.debug(f"Respuesta que causó error: {response if 'response' in locals() else 'N/A'}")
+            return [
+                "Revisar estados financieros",
+                "Monitorear indicadores clave",
+                "Evaluar riesgos identificados"
+            ]
         except Exception as e:
             logger.error(f"Error generando recomendaciones: {str(e)}")
-            return ["Revisar estados financieros", "Monitorear indicadores clave"]
+            return [
+                "Revisar estados financieros",
+                "Monitorear indicadores clave"
+            ]
     
     def _determinar_perfil_aprobador(self, calificacion: Dict) -> Dict:
         """Determina qué perfil humano debe aprobar según el riesgo."""

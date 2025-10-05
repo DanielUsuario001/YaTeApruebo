@@ -4,6 +4,7 @@ Maneja las comunicaciones con los modelos de IA.
 """
 
 import asyncio
+import json
 from typing import Dict, Optional, List
 import openai
 from openai import AsyncOpenAI
@@ -116,6 +117,99 @@ class OpenAIService:
         except Exception as e:
             logger.error(f"❌ Error inesperado en OpenAI: {str(e)}")
             raise Exception(f"Error en comunicación con OpenAI: {str(e)}")
+    
+    async def generar_respuesta_json(
+        self,
+        prompt: str,
+        system_message: Optional[str] = None,
+        model: Optional[str] = None
+    ) -> str:
+        """
+        Genera una respuesta en formato JSON usando OpenAI.
+        Fuerza al modelo a responder en JSON válido.
+        
+        Args:
+            prompt: Mensaje principal para el modelo
+            system_message: Mensaje de sistema (opcional)
+            model: Modelo específico a usar (opcional)
+            
+        Returns:
+            Respuesta en formato JSON como string
+        """
+        try:
+            # Agregar instrucciones específicas para JSON
+            json_prompt = f"""{prompt}
+
+IMPORTANTE: Tu respuesta DEBE ser un objeto JSON válido. 
+No incluyas texto adicional antes o después del JSON.
+No uses markdown, solo JSON puro.
+Asegúrate de que todas las comillas estén correctamente escapadas."""
+            
+            # Usar system message específico para JSON si no se proporciona uno
+            if not system_message:
+                system_message = "Eres un analista financiero experto. Siempre respondes en formato JSON válido, sin texto adicional ni markdown."
+            
+            # Generar respuesta
+            response = await self.generar_respuesta(
+                prompt=json_prompt,
+                system_message=system_message,
+                model=model,
+                temperature=0.3  # Temperatura baja para respuestas más consistentes
+            )
+            
+            # Limpiar respuesta de posibles marcadores de markdown
+            cleaned_response = response.strip()
+            
+            # Remover bloques de código markdown si existen
+            if cleaned_response.startswith('```json'):
+                cleaned_response = cleaned_response[7:]  # Remover ```json
+            elif cleaned_response.startswith('```'):
+                cleaned_response = cleaned_response[3:]  # Remover ```
+                
+            if cleaned_response.endswith('```'):
+                cleaned_response = cleaned_response[:-3]  # Remover ```
+            
+            cleaned_response = cleaned_response.strip()
+            
+            # Validar que sea JSON válido
+            try:
+                json.loads(cleaned_response)
+                return cleaned_response
+            except json.JSONDecodeError as e:
+                logger.error(f"❌ Respuesta no es JSON válido: {e}")
+                logger.debug(f"Respuesta recibida: {cleaned_response[:500]}")
+                # Devolver un JSON de error válido
+                error_json = json.dumps({
+                    "error": "Respuesta inválida del modelo",
+                    "detalle": str(e),
+                    "respuesta_original": cleaned_response[:200]
+                })
+                return error_json
+                
+                # Intentar extraer JSON de la respuesta
+                import re
+                json_match = re.search(r'\{.*\}', cleaned_response, re.DOTALL)
+                if json_match:
+                    potential_json = json_match.group(0)
+                    try:
+                        json.loads(potential_json)
+                        logger.info("✅ JSON extraído exitosamente de la respuesta")
+                        return potential_json
+                    except:
+                        pass
+                
+                # Si todo falla, retornar un JSON de error
+                return json.dumps({
+                    "error": "No se pudo generar respuesta en formato JSON",
+                    "raw_response": cleaned_response[:200]
+                })
+                
+        except Exception as e:
+            logger.error(f"❌ Error generando respuesta JSON: {str(e)}")
+            return json.dumps({
+                "error": str(e),
+                "tipo_error": "generation_error"
+            })
     
     async def generar_respuesta_streaming(
         self, 
